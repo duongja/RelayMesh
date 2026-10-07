@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "viem": "^2.57.3"
   },
   "devDependencies": {
     "@types/react": "^19.3.0",

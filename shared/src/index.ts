@@ -42,6 +42,13 @@ export interface EpochEvidence {
   jobsSample: { jobId: string; urlHash: Hex; nodeId: NodeId; bytes: number; latencyMs: number; status: number }[];
   spotChecks: { jobId: string; match: boolean }[];
   merkleRoot: Hex;
+  rewards?: {
+    poolWei: string;
+    fundedWei: string;
+    root: Hex;
+    tx?: string;
+    shares: { nodeId: NodeId; wallet: Hex; netPts: number; upPts: number; bytes: number; amountWei: string }[];
+  };
 }
 
 export interface NodeRecord {
@@ -194,4 +201,103 @@ export function evidenceHash(canonicalJson: string): Hex {
 
 export function urlHash(url: string): Hex {
   return keccak256(stringToHex(url));
+}
+
+/* ---------- rewards v2: claimable leaves (matches MeshRewards.sol) ---------- */
+
+export interface RewardShare {
+  nodeId: NodeId;
+  wallet: Hex;
+  netPts: number;
+  upPts: number;
+  bytes: number;
+  /** token amount in wei (tRELAY, 18 decimals). */
+  amount: bigint;
+}
+
+/**
+ * Pro-rata split of an epoch pool by points (net+up). Deterministic;
+ * dust stays with the operator. Zero total points → all zero.
+ */
+export function computeShares(
+  totals: { nodeId: NodeId; wallet: Hex; netPts: number; upPts: number; bytes: number }[],
+  poolWei: bigint,
+): RewardShare[] {
+  const pts = totals.map((t) => t.netPts + t.upPts);
+  const total = pts.reduce((a, b) => a + b, 0);
+  if (total === 0 || poolWei === 0n) {
+    return totals.map((t) => ({ ...t, amount: 0n }));
+  }
+  let assigned = 0n;
+  const out = totals.map((t, i) => {
+    const amount = (poolWei * BigInt(pts[i])) / BigInt(total);
+    assigned += amount;
+    return { ...t, amount };
+  });
+  void assigned; // remainder (dust) intentionally unassigned
+  return out;
+}
+
+/** Must equal MeshRewards leaf: keccak(abi.encode(epochId, nodeId, wallet, netPts, upPts, bytes, amount)). */
+export function rewardLeaf(epochId: number, s: RewardShare): Hex {
+  return keccak256(
+    encodeAbiParameters(
+      [
+        { type: "uint256" },
+        { type: "bytes32" },
+        { type: "address" },
+        { type: "uint256" },
+        { type: "uint256" },
+        { type: "uint256" },
+        { type: "uint256" },
+      ],
+      [BigInt(epochId), s.nodeId, s.wallet, BigInt(s.netPts), BigInt(s.upPts), BigInt(s.bytes), s.amount],
+    ),
+  );
+}
+
+function sortPair(a: Hex, b: Hex): Hex {
+  return a.toLowerCase() <= b.toLowerCase()
+    ? keccak256(encodeAbiParameters([{ type: "bytes32" }, { type: "bytes32" }], [a, b]))
+    : keccak256(encodeAbiParameters([{ type: "bytes32" }, { type: "bytes32" }], [b, a]));
+}
+
+/** Sorted-pair tree root — matches MeshRewards.verifyProof. Replaces merkleRoot for rewards. */
+export function rewardRoot(leaves: Hex[]): Hex {
+  if (leaves.length === 0) return ("0x" + "0".repeat(64)) as Hex;
+  if (leaves.length === 1) return leaves[0];
+  let level = [...leaves].sort((a, b) => (a.toLowerCase() < b.toLowerCase() ? -1 : 1));
+  while (level.length > 1) {
+    const next: Hex[] = [];
+    for (let i = 0; i < level.length; i += 2) {
+      const a = level[i];
+      const b = i + 1 < level.length ? level[i + 1] : level[i];
+      next.push(sortPair(a, b));
+    }
+    level = next;
+  }
+  return level[0];
+}
+
+/** Sibling path for leaves[index]. Sorts a copy; maps the index through sorting. */
+export function rewardProof(leaves: Hex[], index: number): Hex[] {
+  if (leaves.length <= 1) return [];
+  const cmp = (a: Hex, b: Hex) => (a.toLowerCase() < b.toLowerCase() ? -1 : 1);
+  let level = [...leaves].sort(cmp);
+  let idx = level.indexOf(leaves[index]);
+  if (idx === -1) throw new Error("leaf not found");
+  const proof: Hex[] = [];
+  while (level.length > 1) {
+    const sib = idx % 2 === 0 ? (idx + 1 < level.length ? level[idx + 1] : level[idx]) : level[idx - 1];
+    proof.push(sib);
+    const next: Hex[] = [];
+    for (let i = 0; i < level.length; i += 2) {
+      const a = level[i];
+      const b = i + 1 < level.length ? level[i + 1] : level[i];
+      next.push(sortPair(a, b));
+    }
+    level = next;
+    idx = Math.floor(idx / 2);
+  }
+  return proof;
 }

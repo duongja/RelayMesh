@@ -27,6 +27,13 @@ LEDGER_ADDRESS=0x1800ac7b1827d137e80400be25afdd15f401fb2e
 OPERATOR_PRIVATE_KEY=0x… (testnet-only wallet, keep secret)
 ```
 
+## Token + rewards (LIVE)
+
+- **MeshToken** `0x5505ed8b5791ba757072464a8aa3d41d061f3c5c` — "RelayMesh Test" (tRELAY, 18 decimals), 1,000,000 fixed supply to operator (deploy tx `0xa349…`)
+- **MeshRewards** `0xd41ac651ee3a065588065d199c8e234bf4e21e9e` (deploy tx `0xb376…`) — Merkle distributor; operator funds per epoch, node wallets claim with proofs; wallet-bound leaves kill theft, epoch-bound leaves kill replays
+- Economics: `EPOCH_POOL_TOKENS` (default 100 tRELAY) split pro-rata by points; dust stays with operator; zero-point epochs skip funding
+- Testnet tRELAY has no monetary value — it proves the mechanics
+
 ## Genesis epoch (LIVE, settled by agent)
 
 - Epoch `497585` (hourly UTC bucket), closed via coordinator `POST /api/epochs/close`
@@ -36,6 +43,12 @@ OPERATOR_PRIVATE_KEY=0x… (testnet-only wallet, keep secret)
 - Coordinator persists it in `data/relaymesh.sqlite` — verified present after restart
 
 Live-found fixes shipped in the same session: `nodeId` format validation at ingestion (`400` on malformed), JSON error middleware (no HTML stack traces), epoch builder skips non-bytes32 ids instead of crashing, double-close returns `409`.
+
+## Funded epoch 497604 (LIVE: close + fund + claim verified)
+
+- Close tx `0xb5a84b18e3d3420c13976f94a3a831d4551ca154da450c73d38ba2754f411dbd`, fund tx `0x9a9b5346e4b58e20d7b4881287a0e0585c38a612b6df5a14cb0f2d58ea62968c` — pool 10 tRELAY, funded 9.999… (1 wei pro-rata dust)
+- Test claim: throwaway wallet `0x899Fc9Cf7D57C3C36096095ab4471088Db8143B3` (10/12 pts) claimed **8.333 tRELAY**, tx `0x7d338b9d8ab6782458b021961f6f2e8ed2629660d979f56210a8bdab1511fb06`, balance verified on-chain
+- Multi-leaf Merkle proof (2 siblings) verified by the contract; `claimed()` guard tested in forge suite (double-claim, wrong-wallet, cross-epoch replay all revert)
 
 ```bash
 cd RelayMesh

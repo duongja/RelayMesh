@@ -68,6 +68,16 @@ r.post("/result", (req, res) => {
   res.json({ ok: true, credited: true, ...pts });
 });
 
+// GET /api/nodes/wallet/:address — nodeIds bound to a wallet (for Rewards lookup)
+r.get("/wallet/:address", (req, res) => {
+  const addr = req.params.address.toLowerCase();
+  if (!/^0x[0-9a-f]{40}$/.test(addr)) return res.status(400).json({ error: "bad wallet address" });
+  const out = [...store.allNodes()]
+    .filter(([, n]) => n.wallet.toLowerCase() === addr)
+    .map(([nodeId, n]) => ({ nodeId, geo: n.geo, kind: n.kind, eligible: n.eligible, lastBeat: n.lastBeat, beats: n.beats, bytes: n.bytes, jobs: n.jobs }));
+  res.json(out);
+});
+
 // GET /api/nodes/:id/job — oldest pending assignment for this node (204 when none)
 r.get("/:id/job", (req, res) => {
   if (!isNodeId(req.params.id)) return res.status(400).json({ error: "bad node id" });

@@ -1,5 +1,13 @@
 # Changelog — RelayMesh
 
+## Unreleased — token rewards end-to-end (verified live)
+
+- MeshToken (tRELAY, 1M fixed) + MeshRewards (Merkle distributor) live on
+  BOT testnet 968; epoch 497604 closed + funded (10 tRELAY pool), 8.333 tRELAY
+  claimed by a throwaway wallet, balance verified on-chain
+- Pro-rata shares, sorted-pair v2 leaves (wallet+epoch bound), proof endpoint,
+  auto-approve funding, MetaMask Rewards view with Claim + chain switch
+
 ## v0.1.0 — testnet pilot (2026-10-07)
 
 First releasable cut. BOT testnet only. No real money, no tradable token.
@@ -31,7 +39,6 @@ First releasable cut. BOT testnet only. No real money, no tradable token.
   browser-local node connect, operator panel, hash-routed views
 
 ## Unreleased — PWA lite nodes
-
 - Installable PWA (`manifest` + offline-shell SW + icons): one-tap Connect
   (wallet + city), heartbeat loop while open, one-tap Disconnect
 - Browser nodes earn uptime only; coordinator excludes them from relay

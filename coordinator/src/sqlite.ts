@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import type { GeoTag, NodeKind, NodeRecord } from "@relaymesh/shared";
+import type { GeoTag, Hex, NodeKind, NodeRecord } from "@relaymesh/shared";
 import type { ClosedEpoch, Dispute, Store } from "./store.js";
 
 /** File-backed store. Same interface as MemoryStore — swap via SQLITE_PATH. */
@@ -37,6 +37,13 @@ export class SqliteStore implements Store {
     const cols2 = this.db.prepare("PRAGMA table_info(nodes)").all() as { name: string }[];
     if (!cols2.some((c) => c.name === "kind")) {
       this.db.exec("ALTER TABLE nodes ADD COLUMN kind TEXT NOT NULL DEFAULT 'desktop'");
+    }
+    // Migration for DBs created before rewards funding (token epoch layer).
+    const cols3 = this.db.prepare("PRAGMA table_info(epochs)").all() as { name: string }[];
+    for (const [col, type] of [["rewardsRoot", "TEXT"], ["rewardsTx", "TEXT"], ["fundedWei", "TEXT"]] as const) {
+      if (!cols3.some((c) => c.name === col)) {
+        this.db.exec(`ALTER TABLE epochs ADD COLUMN ${col} ${type}`);
+      }
     }
   }
 
@@ -93,24 +100,36 @@ export class SqliteStore implements Store {
 
   getEpoch(id: number): ClosedEpoch | undefined {
     const r = this.db.prepare("SELECT * FROM epochs WHERE id = ?").get(id) as
-      ({ root: string; evidenceHash: string; evidence: string; tx: string | null } | undefined);
-    return r ? { root: r.root as ClosedEpoch["root"], evidenceHash: r.evidenceHash as ClosedEpoch["evidenceHash"], evidence: r.evidence, tx: r.tx ?? undefined } : undefined;
+      ({ root: string; evidenceHash: string; evidence: string; tx: string | null; rewardsRoot: string | null; rewardsTx: string | null; fundedWei: string | null } | undefined);
+    if (!r) return undefined;
+    const out: ClosedEpoch = { root: r.root as ClosedEpoch["root"], evidenceHash: r.evidenceHash as ClosedEpoch["evidenceHash"], evidence: r.evidence, tx: r.tx ?? undefined };
+    if (r.rewardsRoot) out.rewardsRoot = r.rewardsRoot as Hex;
+    if (r.rewardsTx) out.rewardsTx = r.rewardsTx;
+    if (r.fundedWei) out.fundedWei = r.fundedWei;
+    return out;
   }
 
   saveEpoch(id: number, e: ClosedEpoch) {
     this.db.prepare(`
-      INSERT INTO epochs (id, root, evidenceHash, evidence, tx) VALUES (?, ?, ?, ?, ?)
+      INSERT INTO epochs (id, root, evidenceHash, evidence, tx, rewardsRoot, rewardsTx, fundedWei) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET root = excluded.root, evidenceHash = excluded.evidenceHash,
-        evidence = excluded.evidence, tx = COALESCE(excluded.tx, epochs.tx)
-    `).run(id, e.root, e.evidenceHash, e.evidence, e.tx ?? null);
+        evidence = excluded.evidence, tx = COALESCE(excluded.tx, epochs.tx),
+        rewardsRoot = COALESCE(excluded.rewardsRoot, epochs.rewardsRoot),
+        rewardsTx = COALESCE(excluded.rewardsTx, epochs.rewardsTx),
+        fundedWei = COALESCE(excluded.fundedWei, epochs.fundedWei)
+    `).run(id, e.root, e.evidenceHash, e.evidence, e.tx ?? null, e.rewardsRoot ?? null, e.rewardsTx ?? null, e.fundedWei ?? null);
   }
 
   allEpochs(): Record<number, ClosedEpoch> {
     const rows = this.db.prepare("SELECT * FROM epochs").all() as
-      { id: number; root: string; evidenceHash: string; evidence: string; tx: string | null }[];
+      { id: number; root: string; evidenceHash: string; evidence: string; tx: string | null; rewardsRoot: string | null; rewardsTx: string | null; fundedWei: string | null }[];
     const out: Record<number, ClosedEpoch> = {};
     for (const r of rows) {
-      out[r.id] = { root: r.root as ClosedEpoch["root"], evidenceHash: r.evidenceHash as ClosedEpoch["evidenceHash"], evidence: r.evidence, tx: r.tx ?? undefined };
+      const e: ClosedEpoch = { root: r.root as ClosedEpoch["root"], evidenceHash: r.evidenceHash as ClosedEpoch["evidenceHash"], evidence: r.evidence, tx: r.tx ?? undefined };
+      if (r.rewardsRoot) e.rewardsRoot = r.rewardsRoot as Hex;
+      if (r.rewardsTx) e.rewardsTx = r.rewardsTx;
+      if (r.fundedWei) e.fundedWei = r.fundedWei;
+      out[r.id] = e;
     }
     return out;
   }

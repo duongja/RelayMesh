@@ -1,13 +1,15 @@
 import { useState } from "react";
 import Dashboard from "./views/Dashboard";
+import Rewards from "./views/Rewards";
 import Network from "./views/Network";
 import Earn from "./views/Earn";
 import Operator from "./views/Operator";
 
-type View = "dashboard" | "network" | "earn" | "operator";
+type View = "dashboard" | "rewards" | "network" | "earn" | "operator";
 
 const NAV: { id: View; label: string; group: string }[] = [
   { id: "dashboard", label: "Dashboard", group: "Participate" },
+  { id: "rewards", label: "Rewards", group: "Participate" },
   { id: "earn", label: "Get started", group: "Participate" },
   { id: "network", label: "Network", group: "Verify" },
   { id: "operator", label: "Operator", group: "Run" },
@@ -63,6 +65,7 @@ export default function App() {
 
       <main className="main">
         {view === "dashboard" && <Dashboard />}
+        {view === "rewards" && <Rewards />}
         {view === "network" && <Network />}
         {view === "earn" && <Earn />}
         {view === "operator" && <Operator onChanged={() => setTick((t) => t + 1)} />}

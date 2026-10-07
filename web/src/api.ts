@@ -11,6 +11,9 @@ export interface EpochRecord {
   evidenceHash: string;
   evidence: string;
   tx?: string;
+  rewardsRoot?: string;
+  rewardsTx?: string;
+  fundedWei?: string;
 }
 
 export type Epochs = Record<string, EpochRecord>;
@@ -59,6 +62,8 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nodeId, wallet, geo, kind: "browser" }),
     }),
+  walletNodes: (wallet: string) => req<WalletNode[]>(`/api/nodes/wallet/${wallet}`),
+  proof: (epochId: number, nodeId: string) => req<ClaimProof>(`/api/epochs/${epochId}/proof/${nodeId}`),
   flags: (token: string) =>
     req<Flags>("/api/admin/flags", { headers: { Authorization: `Bearer ${token}` } }),
   setPaused: (token: string, paused: boolean) =>
@@ -117,6 +122,46 @@ export function formatCountdown(ms: number): string {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(h)}:${p(m)}:${p(sec)}`;
 }
+
+export interface ClaimProof {
+  epochId: number;
+  nodeId: string;
+  wallet: string;
+  netPts: number;
+  upPts: number;
+  bytes: number;
+  amountWei: string;
+  proof: string[];
+  root: string;
+  rewardsContract?: string;
+  tokenContract?: string;
+}
+
+export interface WalletNode {
+  nodeId: string;
+  geo: string | null;
+  kind: string;
+  eligible: boolean;
+  lastBeat: number;
+  beats: number;
+  bytes: number;
+  jobs: number;
+}
+
+export const TOKEN = {
+  address: "0x5505ed8b5791ba757072464a8aa3d41d061f3c5c" as const,
+  rewards: "0xd41ac651ee3a065588065d199c8e234bf4e21e9e" as const,
+  symbol: "tRELAY",
+  decimals: 18,
+};
+
+export const BOT_TESTNET = {
+  id: 968,
+  name: "BOT Testnet",
+  rpc: "https://rpc.bohr.life",
+  explorer: "https://scan.bohr.life",
+  native: { name: "Test BOT", symbol: "tBOT", decimals: 18 },
+};
 
 export async function copyText(t: string): Promise<boolean> {
   try {

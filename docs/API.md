@@ -26,7 +26,10 @@ Evidence bytes hashed are always `canonicalJson(obj)` → `evidenceHash()`.
 - `POST /api/admin/pause {paused}` (Bearer admin) — kill-switch; buyer returns 503 while paused
 - `GET /api/admin/disputes` (Bearer admin) → dispute queue
 - `GET /api/epochs` → `{[epochId]: {root, evidence, tx?}}`
-- `GET /api/epochs/:id/evidence` → exact canonical bytes hashed on-chain (added Step 4)
+- `GET /api/epochs/:id/evidence` → exact canonical bytes hashed on-chain
+- `GET /api/epochs/:id/proof/:nodeId` → claim inputs `{epochId, nodeId, wallet,
+  netPts, upPts, bytes, amountWei, proof[], root, rewardsContract, tokenContract}`;
+  `404` unknown epoch / no rewards / no share (added Step 4)
 - `POST /api/epochs/close` header `Bearer ADMIN` → builds root + evidence, broadcasts
   `closeEpoch(epochId, root, evidenceHash)`, waits 2 confirmations →
   `{epochId, root, evidenceHash, tx, explorer}`; `401` bad token;

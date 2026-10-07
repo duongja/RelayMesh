@@ -5,6 +5,9 @@ export interface ClosedEpoch {
   evidenceHash: Hex;
   evidence: string;
   tx?: string;
+  rewardsRoot?: Hex;
+  rewardsTx?: string;
+  fundedWei?: string;
 }
 
 export interface Dispute {
