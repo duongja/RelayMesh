@@ -50,6 +50,13 @@ Live-found fixes shipped in the same session: `nodeId` format validation at inge
 - Test claim: throwaway wallet `0x899Fc9Cf7D57C3C36096095ab4471088Db8143B3` (10/12 pts) claimed **8.333 tRELAY**, tx `0x7d338b9d8ab6782458b021961f6f2e8ed2629660d979f56210a8bdab1511fb06`, balance verified on-chain
 - Multi-leaf Merkle proof (2 siblings) verified by the contract; `claimed()` guard tested in forge suite (double-claim, wrong-wallet, cross-epoch replay all revert)
 
+## Funded epoch 497605 (first AUTOMATIC settlement via hourly closer)
+
+- Closed + funded by the unattended `scripts/hourly-close.sh` daemon (no human trigger)
+- Close tx `0x8b0187fc7e9a4b98acbdbcdcc0da7735fefa87ab77e96475a39d2b91d4bb1092`, fund tx `0x2201573dc064ff544f62dd6f9c10022aa26036de7cfa65535e4c2275ceaaac6d` (~10 tRELAY pool)
+- On-chain rewards root matches the coordinator proof endpoint exactly
+- Honest blemish: a 1.587 tRELAY share is permanently unclaimable — its throwaway key was shredded after use. Lose keys, lose rewards; the contract needs no rescue hatch.
+
 ```bash
 cd RelayMesh
 PORT=3001 ADMIN_TOKEN=... BUYER_API_KEY=... BOT_RPC_URL=https://rpc.bohr.life \
