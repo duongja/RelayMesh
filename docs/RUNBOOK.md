@@ -6,8 +6,14 @@
    Record `REGISTRY_ADDRESS` + `LEDGER_ADDRESS`.
 2. `coordinator/`: `npm install`; copy `.env.example` → `.env`; set
    `ADMIN_TOKEN`, `BUYER_API_KEY`, `REGISTRY_ADDRESS`, `LEDGER_ADDRESS`,
-   `BLOCKED_PREFIXES` (datacenter ASN prefixes), `ALLOWED_ORIGINS`.
-   Run `npm run dev` (or `start`). One instance per DB + wallet.
+   `TOKEN_ADDRESS`, `REWARDS_ADDRESS`, `EPOCH_POOL_TOKENS` (tRELAY per epoch),
+   `OPERATOR_PRIVATE_KEY` (only needed to broadcast closes/funds),
+   `BLOCKED_PREFIXES` (datacenter ASN prefixes), `ALLOWED_ORIGINS`,
+   `SQLITE_PATH=data/relaymesh.sqlite`.
+   Run `npm run start`. One instance per DB + wallet.
+3. Hourly settlement: `scripts/hourly-close.sh` with `COORDINATOR_URL` +
+   `ADMIN_TOKEN` in env. Closes + funds shortly after each UTC hour boundary.
+   Without it, epochs only close on manual `POST /api/epochs/close`.
 3. `node/`: distribute binary + `NODE_WALLET`, `INSTALL_ID`, `COORDINATOR_URL`.
    Sharer runs `login`, confirms consent, leaves daemon on.
 4. `web/`: `npm run build`, host statically, proxy `/api/*` to coordinator.
