@@ -1,0 +1,14 @@
+{
+  "name": "relaymesh",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": ["shared", "coordinator", "node", "web", "mcp"],
+  "scripts": {
+    "dev:coordinator": "npm --workspace coordinator run dev",
+    "dev:node": "npm --workspace node run dev",
+    "dev:web": "npm --workspace web run dev",
+    "build": "npm --workspaces run build",
+    "test": "npm --workspaces run test"
+  }
+}

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+out/
+contracts/cache/
+.env
+data/
+*.sqlite*
+.DS_Store

@@ -1,0 +1,23 @@
+{
+  "name": "@relaymesh/node",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "relaymesh": "src/index.ts"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc --noEmit",
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@relaymesh/shared": "0.1.0",
+    "dotenv": "^16.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "tsx": "^4.19.0",
+    "typescript": "~5.8.3"
+  }
+}
