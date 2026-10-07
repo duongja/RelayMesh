@@ -89,6 +89,20 @@ export function epochStart(id: number): number {
   return id * 3_600_000;
 }
 
+/** ms until the next UTC hour boundary (next epoch close). */
+export function msToNextEpoch(now = Date.now()): number {
+  return 3_600_000 - (now % 3_600_000);
+}
+
+export function formatCountdown(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(h)}:${p(m)}:${p(sec)}`;
+}
+
 export async function copyText(t: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(t);
