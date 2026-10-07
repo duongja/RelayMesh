@@ -48,6 +48,7 @@ export interface NodeRecord {
   wallet: string;
   ip: string;
   geo: GeoTag | null;
+  kind: NodeKind;
   lastBeat: number;
   beats: number;
   bytes: number;
@@ -107,7 +108,11 @@ export interface HeartbeatPayload {
   nodeId: NodeId;
   wallet: Hex;
   geo?: GeoTag;
+  kind?: NodeKind;
 }
+
+/** desktop = full relay worker; browser = PWA lite node (uptime only, never assigned relay jobs). */
+export type NodeKind = "desktop" | "browser";
 
 export type ObserveTask = "check_price";
 

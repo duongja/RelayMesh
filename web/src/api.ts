@@ -2,6 +2,7 @@ export interface Status {
   network: string;
   nodesKnown: number;
   nodesOnline: number;
+  nodesBrowser?: number;
   testnet: boolean;
 }
 
@@ -20,12 +21,14 @@ export interface NodeInfo {
   nodeId: string;
   wallet: string;
   ip: string;
+  geo?: string | null;
+  kind?: string;
   lastBeat: number;
   beats: number;
   bytes: number;
   jobs: number;
   eligible: boolean;
-  points: NodePoints;
+  points: { netPts: number; upPts: number };
 }
 
 export interface Flags {
@@ -44,6 +47,18 @@ export const api = {
   status: () => req<Status>("/api/status"),
   epochs: () => req<Epochs>("/api/epochs"),
   node: (id: string) => req<NodeInfo>(`/api/nodes/${id.trim()}`),
+  register: (wallet: string, installId: string, geo: string, kind: "browser" | "desktop") =>
+    req<{ nodeId: string; geo: string | null; kind: string }>("/api/nodes/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wallet, installId, geo, kind }),
+    }),
+  heartbeat: (nodeId: string, wallet: string, geo: string) =>
+    req<{ ok: boolean; eligible: boolean }>("/api/nodes/heartbeat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nodeId, wallet, geo, kind: "browser" }),
+    }),
   flags: (token: string) =>
     req<Flags>("/api/admin/flags", { headers: { Authorization: `Bearer ${token}` } }),
   setPaused: (token: string, paused: boolean) =>

@@ -1,36 +1,6 @@
-import { useState } from "react";
-import { api, formatBytes } from "../api";
-import { useMyNodeId } from "./Dashboard";
+import { formatBytes } from "../api";
 
 export default function Earn() {
-  const [myId, saveMyId] = useMyNodeId();
-  const [input, setInput] = useState(myId);
-  const [err, setErr] = useState("");
-  const [ok, setOk] = useState(false);
-  const [checking, setChecking] = useState(false);
-
-  const connect = async () => {
-    const v = input.trim();
-    if (!/^0x[0-9a-fA-F]{64}$/.test(v)) {
-      setErr("That doesn’t look like a node ID — it should be 0x followed by 64 hex characters.");
-      setOk(false);
-      return;
-    }
-    setChecking(true);
-    setErr("");
-    try {
-      const n = await api.node(v);
-      saveMyId(v);
-      setOk(true);
-      setErr("");
-      void n;
-    } catch {
-      setErr("No node with that ID has checked in yet. Run the app first, wait ~30 seconds, then try again.");
-      setOk(false);
-    } finally {
-      setChecking(false);
-    }
-  };
 
   return (
     <>
@@ -56,31 +26,11 @@ export default function Earn() {
         <div className="step">
           <div className="step-num">2</div>
           <div>
-            <h3>Connect it here</h3>
-            <p>Paste your node ID below. It’s stored only in this browser — this dashboard then shows your points and status.</p>
-            <div className="searchrow" style={{ marginTop: 0 }}>
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") connect(); }}
-                placeholder="0x… node ID"
-                aria-label="Node ID"
-                spellCheck={false}
-                autoComplete="off"
-              />
-              <button className="btn-primary" onClick={connect} disabled={checking || !input.trim()}>
-                {checking ? "Checking…" : myId ? "Reconnect" : "Connect"}
-              </button>
+            <h3>Connect on the dashboard</h3>
+            <p>Enter your wallet and city on the Dashboard and tap Connect. Your browser node registers in one step — nothing to install.</p>
+            <div className="op-row">
+              <a className="link-btn primary" href="#/dashboard">Open dashboard</a>
             </div>
-            {myId && !err && (
-              <p className="op-note" style={{ marginTop: 8 }}>
-                Connected as <code style={{ fontFamily: "var(--mono)", fontSize: 12 }}>{myId.slice(0, 14)}…{myId.slice(-6)}</code>
-                {" · "}<button className="copy-btn" onClick={() => { saveMyId(""); setInput(""); setOk(false); }}>Disconnect</button>
-              </p>
-            )}
-            {err && <div className="alert-err" role="alert">{err}</div>}
-            {ok && <div className="alert-ok" role="status">Node found — your dashboard now tracks it.</div>}
           </div>
         </div>
         <div className="step">

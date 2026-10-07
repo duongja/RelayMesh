@@ -3,6 +3,7 @@ import {
   api, copyText, epochStart, formatBytes, formatCountdown, msToNextEpoch,
   shortHash, timeAgo, type Epochs, type NodeInfo, type Status,
 } from "../api";
+import { useConnection } from "../node";
 
 function useNow(intervalMs = 1000): number {
   const [now, setNow] = useState(Date.now());
@@ -32,25 +33,17 @@ function Copy({ value }: { value: string }) {
   );
 }
 
-const NODE_KEY = "relaymesh-node-id";
-
-export function useMyNodeId(): [string, (v: string) => void] {
-  const [id, setId] = useState(() => localStorage.getItem(NODE_KEY) || "");
-  const save = (v: string) => {
-    setId(v);
-    if (v) localStorage.setItem(NODE_KEY, v);
-    else localStorage.removeItem(NODE_KEY);
-  };
-  return [id, save];
-}
+const CITIES = ["KE-Nairobi", "KE-Mombasa", "KE-Kisumu", "KE-Nakuru", "NG-Lagos", "GH-Accra"];
 
 export default function Dashboard() {
   const now = useNow();
+  const conn = useConnection();
   const [status, setStatus] = useState<Status | null>(null);
   const [epochs, setEpochs] = useState<Epochs>({});
   const [failed, setFailed] = useState(false);
-  const [myId] = useMyNodeId();
   const [mine, setMine] = useState<NodeInfo | null>(null);
+  const [wallet, setWallet] = useState(conn.wallet);
+  const [geo, setGeo] = useState("KE-Nairobi");
 
   const refresh = useCallback(async () => {
     try {
@@ -58,13 +51,13 @@ export default function Dashboard() {
       setStatus(s);
       setEpochs(e);
       setFailed(false);
-      if (myId) {
-        try { setMine(await api.node(myId)); } catch { setMine(null); }
+      if (conn.nodeId && conn.status === "on") {
+        try { setMine(await api.node(conn.nodeId)); } catch { setMine(null); }
       } else setMine(null);
     } catch {
       setFailed(true);
     }
-  }, [myId]);
+  }, [conn.nodeId, conn.status]);
 
   useEffect(() => {
     refresh();
@@ -73,7 +66,7 @@ export default function Dashboard() {
   }, [refresh]);
 
   const ids = Object.keys(epochs).sort((a, b) => Number(b) - Number(a));
-  const myOnline = mine ? Date.now() - mine.lastBeat < 90_000 : false;
+  const connected = conn.status === "on";
 
   return (
     <>
@@ -83,12 +76,50 @@ export default function Dashboard() {
       </div>
 
       <div className="status-hero">
-        <div className={`status-light ${myOnline ? "" : "idle"}`} aria-hidden="true" />
-        <div>
-          <div className="status-title">{mine ? (myOnline ? "Connected" : "Node offline") : "No node connected"}</div>
-          <div className="status-sub">
-            {mine ? `DEVICE · ${shortHash(mine.nodeId, 12, 8)}` : "Connect your node to start earning"}
+        <div className={`status-light ${connected ? "" : "idle"}`} aria-hidden="true" />
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div className="status-title">
+            {conn.status === "connecting" ? "Connecting…" : connected ? "Connected" : "Not connected"}
           </div>
+          <div className="status-sub">
+            {connected ? `BROWSER NODE · ${shortHash(conn.nodeId, 12, 8)}` : "One tap to join the network"}
+          </div>
+          {!connected && (
+            <div className="op-row" style={{ marginTop: 12 }}>
+              <input
+                type="text"
+                value={wallet}
+                onChange={(e) => setWallet(e.target.value)}
+                placeholder="Wallet address (0x…)"
+                aria-label="Wallet address"
+                spellCheck={false}
+                autoComplete="off"
+                style={{ maxWidth: 240 }}
+              />
+              <select
+                value={geo}
+                onChange={(e) => setGeo(e.target.value)}
+                aria-label="City"
+                style={{ font: "inherit", fontSize: 14, background: "rgba(255,255,255,0.04)", color: "var(--ink)", border: "1px solid var(--hairline-2)", borderRadius: 11, padding: "11px 12px" }}
+              >
+                {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <button
+                className="btn-primary"
+                disabled={conn.status === "connecting" || !wallet.trim()}
+                onClick={() => conn.connect(wallet, geo)}
+              >
+                {conn.status === "connecting" ? "Connecting…" : conn.hasIdentity ? "Reconnect" : "Connect"}
+              </button>
+            </div>
+          )}
+          {conn.status === "error" && <div className="alert-err" role="alert">{conn.error}</div>}
+          {connected && (
+            <div className="op-row" style={{ marginTop: 12 }}>
+              <button className="btn-quiet" onClick={conn.disconnect}>Disconnect</button>
+              <span className="op-note">Stops sharing instantly. Reconnect anytime.</span>
+            </div>
+          )}
         </div>
         <div className="status-meta">
           <div className="countdown">{formatCountdown(msToNextEpoch(now))}</div>
@@ -117,7 +148,10 @@ export default function Dashboard() {
           <div className="card">
             <div className="label">Nodes online</div>
             <div className="big">{status.nodesOnline}</div>
-            <div className="hint">of {status.nodesKnown} known</div>
+            <div className="hint">
+              of {status.nodesKnown} known
+              {status.nodesBrowser ? ` · ${status.nodesBrowser} in app` : ""}
+            </div>
           </div>
           <div className="card">
             <div className="label">Epochs settled</div>
@@ -129,21 +163,21 @@ export default function Dashboard() {
 
       <div className="notice" role="note">
         <span aria-hidden="true">●</span>
-        <span>Testnet pilot. Points record contribution only — they have no monetary value and cannot be transferred.</span>
+        <span>This app earns uptime points while it stays open. For relay earnings, run the desktop node — see Get started.</span>
       </div>
 
       <div className="how">
         <div className="card">
-          <h3>1 · Connect your node</h3>
-          <p>Run the app with your wallet. Your node registers and starts heartbeating.</p>
+          <h3>1 · Connect</h3>
+          <p>One tap with your wallet. Your browser node registers and starts heartbeating.</p>
         </div>
         <div className="card">
-          <h3>2 · It runs in the background</h3>
-          <p>Only idle bandwidth is used. Your streaming, calls and downloads always come first.</p>
+          <h3>2 · Keep it open</h3>
+          <p>Uptime accrues while the app is open. Your connection is never touched beyond heartbeats.</p>
         </div>
         <div className="card">
           <h3>3 · You earn points</h3>
-          <p>Network points for traffic served, uptime points for staying connected. Settled hourly, on-chain.</p>
+          <p>Uptime points here; network points with the desktop node. Settled hourly, on-chain.</p>
         </div>
       </div>
 

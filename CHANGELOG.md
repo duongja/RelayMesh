@@ -29,3 +29,12 @@ First releasable cut. BOT testnet only. No real money, no tradable token.
 - Dark dashboard: connection status + settlement countdown, Network/Uptime
   points, epoch proofs with evidence/transaction links, 3-step onboarding with
   browser-local node connect, operator panel, hash-routed views
+
+## Unreleased — PWA lite nodes
+
+- Installable PWA (`manifest` + offline-shell SW + icons): one-tap Connect
+  (wallet + city), heartbeat loop while open, one-tap Disconnect
+- Browser nodes earn uptime only; coordinator excludes them from relay
+  assignment (honest 503 when no desktop nodes in geo); `nodesBrowser` in status
+- `POST /api/nodes/register` mints nodeIds server-side; nodeId/geo validation
+  at ingestion; JSON error middleware

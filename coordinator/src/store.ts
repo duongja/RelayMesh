@@ -1,4 +1,4 @@
-import type { GeoTag, Hex, NodeRecord } from "@relaymesh/shared";
+import type { GeoTag, Hex, NodeKind, NodeRecord } from "@relaymesh/shared";
 
 export interface ClosedEpoch {
   root: Hex;
@@ -17,7 +17,7 @@ export interface Dispute {
 /** Storage behind all routes. Memory for tests; SQLite file-backed in production. */
 export interface Store {
   getNode(id: string): NodeRecord | undefined;
-  upsertBeat(id: string, wallet: string, ip: string, geo?: GeoTag | null): NodeRecord;
+  upsertBeat(id: string, wallet: string, ip: string, geo?: GeoTag | null, kind?: NodeKind): NodeRecord;
   setEligible(id: string, ok: boolean): NodeRecord | undefined;
   allNodes(): Iterable<[string, NodeRecord]>;
   recordResult(nodeId: string, bytes: number): void;
@@ -37,12 +37,13 @@ export class MemoryStore implements Store {
   private epochs = new Map<number, ClosedEpoch>();
   private disputeLog: Dispute[] = [];
   getNode(id: string) { return this.nodes.get(id); }
-  upsertBeat(id: string, wallet: string, ip: string, geo?: GeoTag | null): NodeRecord {
-    const prev = this.nodes.get(id) ?? { wallet, ip, geo: null, lastBeat: 0, beats: 0, bytes: 0, jobs: 0, eligible: true };
+  upsertBeat(id: string, wallet: string, ip: string, geo?: GeoTag | null, kind?: NodeKind): NodeRecord {
+    const prev = this.nodes.get(id) ?? { wallet, ip, geo: null, kind: "desktop", lastBeat: 0, beats: 0, bytes: 0, jobs: 0, eligible: true };
     prev.lastBeat = Date.now();
     prev.beats += 1;
     prev.ip = ip;
     if (geo) prev.geo = geo;
+    if (kind) prev.kind = kind;
     this.nodes.set(id, prev);
     let set = this.ipIndex.get(ip);
     if (!set) { set = new Set(); this.ipIndex.set(ip, set); }

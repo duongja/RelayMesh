@@ -2,25 +2,41 @@ import { Router } from "express";
 import { z } from "zod";
 import { store, authed, isBlockedIp } from "../index.js";
 import { keccak256, stringToHex } from "viem";
-import { computePoints, isGeoTag, isNodeId } from "@relaymesh/shared";
+import { computePoints, isGeoTag, isNodeId, nodeIdFor, type Hex } from "@relaymesh/shared";
 import { submitJobResult, takeJob } from "../jobs.js";
 
 const r = Router();
 const nodeIdSchema = z.string().refine(isNodeId, { message: "nodeId must be 0x + 64 hex chars" });
+const kindSchema = z.enum(["desktop", "browser"]).default("desktop");
 
-// POST /api/nodes/heartbeat {nodeId, wallet, geo?} — 30s cadence, signed in production (TODO)
+// POST /api/nodes/register {wallet, installId, geo?, kind?} — mints a nodeId (PWA + CLI onboarding)
+r.post("/register", (req, res) => {
+  const body = z.object({
+    wallet: z.string().regex(/^0x[0-9a-fA-F]{40}$/, { message: "wallet must be a 0x address" }),
+    installId: z.string().min(8).max(64),
+    geo: z.string().optional(),
+    kind: kindSchema,
+  }).parse(req.body);
+  if (body.geo !== undefined && !isGeoTag(body.geo)) {
+    return res.status(400).json({ error: "invalid request", detail: "geo must look like CC-City, e.g. KE-Nairobi" });
+  }
+  const nodeId = nodeIdFor(body.wallet.toLowerCase() as Hex, body.installId);
+  res.status(201).json({ nodeId, geo: body.geo ?? null, kind: body.kind });
+});
+
+// POST /api/nodes/heartbeat {nodeId, wallet, geo?, kind?} — 30s cadence, signed in production (TODO)
 r.post("/heartbeat", (req, res) => {
-  const body = z.object({ nodeId: nodeIdSchema, wallet: z.string(), geo: z.string().optional() }).parse(req.body);
+  const body = z.object({ nodeId: nodeIdSchema, wallet: z.string(), geo: z.string().optional(), kind: kindSchema }).parse(req.body);
   if (body.geo !== undefined && !isGeoTag(body.geo)) {
     return res.status(400).json({ error: "invalid request", detail: "geo must look like CC-City, e.g. KE-Nairobi" });
   }
   const ip = (req.headers["x-forwarded-for"] as string) ?? req.socket.remoteAddress ?? "unknown";
   if (isBlockedIp(ip)) {
-    const rec = store.upsertBeat(body.nodeId, body.wallet, ip, body.geo);
+    const rec = store.upsertBeat(body.nodeId, body.wallet, ip, body.geo, body.kind);
     store.setEligible(body.nodeId, false);
     return res.status(403).json({ ok: false, eligible: false, reason: "blocked network prefix (datacenter/ASN denylist MVP)" });
   }
-  const rec = store.upsertBeat(body.nodeId, body.wallet, ip, body.geo);
+  const rec = store.upsertBeat(body.nodeId, body.wallet, ip, body.geo, body.kind);
   res.json({ ok: true, eligible: rec.eligible });
 });
 

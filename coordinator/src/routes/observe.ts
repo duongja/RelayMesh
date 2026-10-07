@@ -13,8 +13,9 @@ const r = Router();
 const OBSERVE_WAIT_MS = 25_000;
 
 function pickNodes(geo: string, n: number): string[] {
+  // Browser (PWA lite) nodes earn uptime only — relay needs a full worker.
   const eligible = [...store.allNodes()].filter(
-    ([, rec]) => rec.eligible && Date.now() - rec.lastBeat < 90_000 && rec.geo === geo,
+    ([, rec]) => rec.eligible && rec.kind !== "browser" && Date.now() - rec.lastBeat < 90_000 && rec.geo === geo,
   );
   eligible.sort((a, b) => b[1].beats - a[1].beats);
   const pool = eligible.slice(0, Math.max(n, 3));

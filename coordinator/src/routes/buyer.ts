@@ -17,7 +17,7 @@ r.post("/fetch", (req, res) => {
   const host = normalizeHost(new URL(body.url).hostname);
   if (!ALLOWLIST.has(host)) return res.status(400).json({ error: "host not allowlisted" });
 
-  const eligible = [...store.allNodes()].filter(([, n]) => n.eligible && Date.now() - n.lastBeat < 90_000);
+  const eligible = [...store.allNodes()].filter(([, n]) => n.eligible && n.kind !== "browser" && Date.now() - n.lastBeat < 90_000);
   if (eligible.length === 0) return res.status(503).json({ error: "no nodes online" });
 
   // Reputation-weighted random MVP: prefer high-beat nodes (placeholder for §6.2 score).

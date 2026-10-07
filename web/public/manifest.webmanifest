@@ -1,0 +1,16 @@
+{
+  "name": "RelayMesh — Earn from the internet you don't use",
+  "short_name": "RelayMesh",
+  "description": "Share idle bandwidth, earn points, verify every settlement on BOT Chain.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0e0d",
+  "theme_color": "#0a0e0d",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

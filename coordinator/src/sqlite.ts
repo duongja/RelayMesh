@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
-import type { GeoTag, NodeRecord } from "@relaymesh/shared";
+import type { GeoTag, NodeKind, NodeRecord } from "@relaymesh/shared";
 import type { ClosedEpoch, Dispute, Store } from "./store.js";
 
 /** File-backed store. Same interface as MemoryStore — swap via SQLITE_PATH. */
@@ -14,7 +14,7 @@ export class SqliteStore implements Store {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS nodes (
         id TEXT PRIMARY KEY, wallet TEXT NOT NULL, ip TEXT NOT NULL,
-        geo TEXT,
+        geo TEXT, kind TEXT NOT NULL DEFAULT 'desktop',
         lastBeat INTEGER NOT NULL, beats INTEGER NOT NULL DEFAULT 0,
         bytes INTEGER NOT NULL DEFAULT 0, jobs INTEGER NOT NULL DEFAULT 0,
         eligible INTEGER NOT NULL DEFAULT 1
@@ -33,12 +33,18 @@ export class SqliteStore implements Store {
     if (!cols.some((c) => c.name === "geo")) {
       this.db.exec("ALTER TABLE nodes ADD COLUMN geo TEXT");
     }
+    // Migration for DBs created before node kinds (PWA lite nodes).
+    const cols2 = this.db.prepare("PRAGMA table_info(nodes)").all() as { name: string }[];
+    if (!cols2.some((c) => c.name === "kind")) {
+      this.db.exec("ALTER TABLE nodes ADD COLUMN kind TEXT NOT NULL DEFAULT 'desktop'");
+    }
   }
 
   private rowToNode(id: string, r: Record<string, unknown>): NodeRecord {
     return {
       wallet: r.wallet as string, ip: r.ip as string,
       geo: (r.geo as string) ?? null,
+      kind: ((r.kind as string) ?? "desktop") as NodeKind,
       lastBeat: r.lastBeat as number, beats: r.beats as number,
       bytes: r.bytes as number, jobs: r.jobs as number,
       eligible: (r.eligible as number) === 1,
@@ -50,13 +56,13 @@ export class SqliteStore implements Store {
     return r ? this.rowToNode(id, r) : undefined;
   }
 
-  upsertBeat(id: string, wallet: string, ip: string, geo?: GeoTag | null): NodeRecord {
+  upsertBeat(id: string, wallet: string, ip: string, geo?: GeoTag | null, kind?: NodeKind): NodeRecord {
     const now = Date.now();
     this.db.prepare(`
-      INSERT INTO nodes (id, wallet, ip, geo, lastBeat, beats) VALUES (?, ?, ?, ?, ?, 1)
+      INSERT INTO nodes (id, wallet, ip, geo, kind, lastBeat, beats) VALUES (?, ?, ?, ?, ?, ?, 1)
       ON CONFLICT(id) DO UPDATE SET lastBeat = ?, beats = beats + 1, ip = ?,
-        geo = COALESCE(?, geo)
-    `).run(id, wallet, ip, geo ?? null, now, now, ip, geo ?? null);
+        geo = COALESCE(?, geo), kind = COALESCE(?, kind)
+    `).run(id, wallet, ip, geo ?? null, kind ?? "desktop", now, now, ip, geo ?? null, kind ?? null);
     return this.getNode(id)!;
   }
 
