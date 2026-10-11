@@ -1,6 +1,5 @@
 # RelayMesh — Idle Bandwidth for Public Web Data on BOT Chain
 
-Monorepo. Testnet only. No real money.
 
 ```
 RelayMesh/
